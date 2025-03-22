@@ -16,7 +16,7 @@ A modern cross-platform contact management solution with document attachment cap
 - **Utilities**: React Router, File System Access API
   
 ## Installation 💻
-    ```bashgit clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
+    git clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
 Running the App 🚀
 Web Development:
 
