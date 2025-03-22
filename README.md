@@ -2,25 +2,32 @@
 A modern cross-platform contact management solution with document attachment capabilities.![App Screenshot](public/images/screenshot.png) <!-- Add your screenshot later -->
 ## Features ✨
 - 📞 Contact management with rich profiles
-- - 📁 Document attachment support (PDF, Images, Text)
-  - - 🔍 Quick search and filtering- 📲 Mobile-first design with Capacitor integration
-    - - 🔄 Offline-first architecture
-      - - 🔒 Secure local storage
-        - - 📤 Easy contact sharing
-          - ## Tech Stack 🛠️-
-          - **Frontend**: React + Material UI- **Mobile**: Capacitor (Android)- **State Management**: Context API- **Storage**: Capacitor Preferences + LocalStorage- **Utilities**: React Router, File System Access API## Installation 💻```bashgit clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
+- 📁 Document attachment support (PDF, Images, Text)
+- 🔍 Quick search and filtering- 📲 Mobile-first design with Capacitor integration
+- 🔄 Offline-first architecture
+- 🔒 Secure local storage
+- 📤 Easy contact sharing
+
+## Tech Stack 🛠️-
+- **Frontend**: React + Material UI
+- **Mobile**: Capacitor (Android)
+- **State Management**: Context API
+- **Storage**: Capacitor Preferences + LocalStorage
+- **Utilities**: React Router, File System Access API
+  
+## Installation 💻
+    ```bashgit clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
 Running the App 🚀
 Web Development:
 
-bash
-Run
-npm start
+    npm start
 Android Development:
 
-bash
-Run
-npm run buildnpx cap sync androidnpx cap open android# Build and run from Android Studio
-Configuration ⚙️
+    bash
+    Run
+    npm run buildnpx cap sync androidnpx cap open android# Build and run from Android Studio
+
+## Configuration ⚙️
 Add these permissions to android/app/src/main/AndroidManifest.xml:
 
 xml
