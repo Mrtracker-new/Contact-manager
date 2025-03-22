@@ -23,9 +23,10 @@ Web Development:
     npm start
 Android Development:
 
-    bash
-    Run
-    npm run buildnpx cap sync androidnpx cap open android# Build and run from Android Studio
+    npm run build
+    npx cap sync android
+    npx cap open android
+  # Build and run from Android Studio
 
 ## Configuration ⚙️
 Add these permissions to android/app/src/main/AndroidManifest.xml:
