@@ -1,4 +1,14 @@
-# RNR Contact Manager 📱![React](https://img.shields.io/badge/React-18.2-blue)![Capacitor](https://img.shields.io/badge/Capacitor-7.1-purple)[![GitHub license](https://img.shields.io/badge/license-MIT-green)](https://github.com/Mrtracker-new/RNR-Contact-Manager/blob/main/LICENSE)A modern cross-platform contact management solution with document attachment capabilities.![App Screenshot](public/images/screenshot.png) <!-- Add your screenshot later -->## Features ✨- 📞 Contact management with rich profiles- 📁 Document attachment support (PDF, Images, Text)- 🔍 Quick search and filtering- 📲 Mobile-first design with Capacitor integration- 🔄 Offline-first architecture- 🔒 Secure local storage- 📤 Easy contact sharing## Tech Stack 🛠️- **Frontend**: React + Material UI- **Mobile**: Capacitor (Android)- **State Management**: Context API- **Storage**: Capacitor Preferences + LocalStorage- **Utilities**: React Router, File System Access API## Installation 💻```bashgit clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
+# RNR Contact Manager 📱![React](https://img.shields.io/badge/React-18.2-blue)![Capacitor](https://img.shields.io/badge/Capacitor-7.1-purple)[![GitHub license](https://img.shields.io/badge/license-MIT-green)](https://github.com/Mrtracker-new/RNR-Contact-Manager/blob/main/LICENSE)
+A modern cross-platform contact management solution with document attachment capabilities.![App Screenshot](public/images/screenshot.png) <!-- Add your screenshot later -->
+## Features ✨
+- 📞 Contact management with rich profiles
+- - 📁 Document attachment support (PDF, Images, Text)
+  - - 🔍 Quick search and filtering- 📲 Mobile-first design with Capacitor integration
+    - - 🔄 Offline-first architecture
+      - - 🔒 Secure local storage
+        - - 📤 Easy contact sharing
+          - ## Tech Stack 🛠️-
+          - **Frontend**: React + Material UI- **Mobile**: Capacitor (Android)- **State Management**: Context API- **Storage**: Capacitor Preferences + LocalStorage- **Utilities**: React Router, File System Access API## Installation 💻```bashgit clone https://github.com/Mrtracker-new/RNR-Contact-Manager.gitcd RNR-Contact-Managernpm install
 Running the App 🚀
 Web Development:
 
