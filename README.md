@@ -26,7 +26,7 @@ Android Development:
     npm run build
     npx cap sync android
     npx cap open android
-  # Build and run from Android Studio
+    # Build and run from Android Studio
 
 ## Configuration ⚙️
 Add these permissions to android/app/src/main/AndroidManifest.xml:
