@@ -18,7 +18,7 @@ A modern, cross-platform contact management application built with React and Cap
 ### Mobile App View
 <div align="center">
   <img src="screenshots/app_home_view.png" alt="App Home Screen" width="300"/>
-  <img src="-screenshots/app_contact_view.png" alt="App Add Contact" width="300"/>
+  <img src="screenshots/app_contact_view.png" alt="App Add Contact" width="300"/>
   <img src="screenshots/app_newcontact_view.png" alt="App Contact Details" width="300"/>
   <img src="screenshots/app_newcontact_view_2.png" alt="App Contact Details" width="300"/>
   <img src="screenshots/app_document_add.png" alt="App Contact Details" width="300"/>
