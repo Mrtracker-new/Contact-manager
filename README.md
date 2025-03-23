@@ -4,6 +4,11 @@
 ![Material UI](https://img.shields.io/badge/Material_UI-5-purple)
 ![Capacitor](https://img.shields.io/badge/Capacitor-4-green)
 
+<div align="center">
+  <img src="screenshots/rnr.png" alt="RNR Contact Manager Logo" width="200"/>
+</div>
+
+
 A modern, cross-platform contact management application built with React and Capacitor, designed to simplify contact organization with rich document attachment capabilities.
 
 ## 📱 Screenshots
