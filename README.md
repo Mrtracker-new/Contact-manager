@@ -6,6 +6,15 @@
 
 A modern, cross-platform contact management application built with React and Capacitor, designed to simplify contact organization with rich document attachment capabilities.
 
+## 📱 Screenshots
+
+<div align="center">
+  <img src="public/images/screenshots/app_contact_view.png" alt="Home Screen" width="300"/>
+  <img src="public/images/screenshots/app_document_add.png" alt="Add Contact" width="300"/>
+  <img src="public/images/screenshots/app_document_preview.png" alt="Contact Details" width="300"/>
+</div>
+
+
 ## 🌟 Key Features
 
 - **Rich Contact Profiles**: Store comprehensive contact information including photos, addresses, and notes
