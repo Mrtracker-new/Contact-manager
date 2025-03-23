@@ -5,7 +5,7 @@
 ![Capacitor](https://img.shields.io/badge/Capacitor-4-green)
 
 <div align="center">
-  <img src="screenshots/rnr.png" alt="RNR Contact Manager Logo" width="200"/>
+  <img src="screenshots/rnr.png" alt="RNR Logo" width="200"/>
 </div>
 
 
