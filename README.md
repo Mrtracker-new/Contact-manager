@@ -54,7 +54,7 @@ In today's connected world, effective contact management goes beyond storing nam
 
 **Clone the repository**
     
-    git clone https://github.com/Mrtracker-new/Contact-Manager.git
+    git clone https://github.com/Mrtracker-new/Contact-manager.git
 
 **Install dependencies**
 
