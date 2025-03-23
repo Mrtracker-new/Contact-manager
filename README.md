@@ -26,7 +26,7 @@ In today's connected world, effective contact management goes beyond storing nam
 
 ## 📱 Installation
 
-### Web Version
+### 💻Web Version
 
 **Clone the repository**
     
@@ -41,7 +41,7 @@ In today's connected world, effective contact management goes beyond storing nam
    
     npm start
 
-### Android App
+### 📲Android App
 
 **Build the web app**
 
