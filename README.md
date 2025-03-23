@@ -9,9 +9,9 @@ A modern, cross-platform contact management application built with React and Cap
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="public/images/screenshots/app_contact_view.png" alt="Home Screen" width="300"/>
-  <img src="public/images/screenshots/app_document_add.png" alt="Add Contact" width="300"/>
-  <img src="public/images/screenshots/app_document_preview.png" alt="Contact Details" width="300"/>
+  <img src="screenshots/app_contact_view.png" alt="Home Screen" width="300"/>
+  <img src="screenshots/app_document_add.png" alt="Add Contact" width="300"/>
+  <img src="screenshots/app_document_preview.png" alt="Contact Details" width="300"/>
 </div>
 
 
