@@ -24,37 +24,51 @@ import HomeIcon from '@mui/icons-material/Home';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Settings from './Settings';
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Box, Button, Container } from '@mui/material';
 import { Link } from 'react-router-dom';
 
 const Header = () => {
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <Box 
-          component={Link} 
-          to="/" 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            textDecoration: 'none', 
-            color: 'inherit' 
-          }}
-        >
+    <AppBar position="static" elevation={0} sx={{ 
+      background: 'linear-gradient(45deg, #3f51b5 30%, #757de8 90%)',
+      boxShadow: '0 3px 5px 2px rgba(63, 81, 181, .3)'
+    }}>
+      <Container maxWidth="lg">
+        <Toolbar sx={{ px: { xs: 0 } }}>
           <Box 
-            component="img"
-            src="/images/rnr-logo.png"
-            alt="RNR Logo"
+            component={Link} 
+            to="/" 
             sx={{ 
-              height: 40, 
-              mr: 1 
+              display: 'flex', 
+              alignItems: 'center', 
+              textDecoration: 'none', 
+              color: 'inherit',
+              flexGrow: 1
             }}
-          />
-          <Typography variant="h6" component="div">
-            Contact Manager
-          </Typography>
-        </Box>
-      </Toolbar>
+          >
+            <ContactsIcon sx={{ fontSize: 32, mr: 1.5 }} />
+            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+              RNR Contact Manager
+            </Typography>
+          </Box>
+          
+          <Button 
+            component={Link} 
+            to="/add-contact" 
+            variant="contained" 
+            color="secondary"
+            sx={{ 
+              color: 'white',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+              '&:hover': {
+                boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+              }
+            }}
+          >
+            Add Contact
+          </Button>
+        </Toolbar>
+      </Container>
     </AppBar>
   );
 };

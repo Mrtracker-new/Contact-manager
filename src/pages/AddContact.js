@@ -394,7 +394,16 @@ const AddContact = () => {
         </Box>
       )}
 
-      <Paper component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
+      <Paper 
+        component="form" 
+        onSubmit={handleSubmit} 
+        sx={{ 
+          p: 4, 
+          borderRadius: 3,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+          background: 'linear-gradient(to bottom, #ffffff, #f8f9fa)'
+        }}
+      >
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
           <input
             accept="image/*"
@@ -407,13 +416,19 @@ const AddContact = () => {
             <Avatar 
               src={photoPreview} 
               sx={{ 
-                width: 100, 
-                height: 100, 
+                width: 120, 
+                height: 120, 
                 cursor: 'pointer',
-                '&:hover': { opacity: 0.8 }
+                border: '4px solid white',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                '&:hover': { 
+                  opacity: 0.9,
+                  transform: 'scale(1.05)',
+                  transition: 'all 0.2s ease'
+                }
               }}
             >
-              {photoPreview ? null : <PhotoCameraIcon />}
+              {photoPreview ? null : <PhotoCameraIcon fontSize="large" />}
             </Avatar>
           </label>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -448,7 +463,7 @@ const AddContact = () => {
               helperText={errors.phone}
             />
           </Grid>
-
+          
           <Grid item xs={12} sm={6}>
             <TextField
               required

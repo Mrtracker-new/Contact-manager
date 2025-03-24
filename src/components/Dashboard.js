@@ -99,8 +99,24 @@ const Dashboard = () => {
       />
 
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          p: 6 
+        }}>
+          <CircularProgress 
+            size={60} 
+            thickness={4} 
+            sx={{ 
+              color: 'primary.main',
+              mb: 2
+            }} 
+          />
+          <Typography variant="body1" color="text.secondary">
+            Loading your contacts...
+          </Typography>
         </Box>
       ) : filteredContacts.length === 0 ? (
         <Box sx={{ textAlign: 'center', p: 4 }}>
@@ -120,48 +136,74 @@ const Dashboard = () => {
                   color: 'inherit',
                   display: 'block',
                   height: '100%',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-4px)',
-                    transition: 'transform 0.2s ease-in-out',
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 12px 20px rgba(0,0,0,0.15)',
                   },
                 }}
               >
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    mb: 2 
+                  }}>
                     <Avatar
-                      sx={{ width: 56, height: 56, mr: 2 }}
-                      src={contact.photoData?.data}
+                      src={contact.photo}
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        mb: 2,
+                        fontSize: '2rem',
+                        background: 'linear-gradient(45deg, #3f51b5 30%, #757de8 90%)',
+                      }}
                     >
                       {contact.name ? contact.name.charAt(0).toUpperCase() : <PersonIcon />}
                     </Avatar>
-                    <Box>
-                      <Typography variant="h6" component="div">
-                        {contact.name}
-                      </Typography>
-                      {contact.groups && contact.groups.length > 0 && (
-                        <Box sx={{ mt: 0.5 }}>
-                          {contact.groups.map((group, index) => (
-                            <Chip
-                              key={index}
-                              label={group}
-                              size="small"
-                              sx={{ mr: 0.5, mb: 0.5 }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                  {contact.phone && (
-                    <Typography color="text.secondary" variant="body2">
-                      {contact.phone}
+                    <Typography variant="h6" component="h2" align="center" sx={{ fontWeight: 600 }}>
+                      {contact.name}
                     </Typography>
-                  )}
-                  {contact.email && (
-                    <Typography color="text.secondary" variant="body2">
+                    <Typography variant="body2" color="text.secondary" align="center">
                       {contact.email}
                     </Typography>
-                  )}
+                  </Box>
+                  
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      {contact.phone}
+                    </Typography>
+                    
+                    {contact.tags && contact.tags.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 2 }}>
+                        {contact.tags.slice(0, 3).map((tag) => (
+                          <Chip 
+                            key={tag} 
+                            label={tag} 
+                            size="small" 
+                            sx={{ 
+                              background: 'rgba(63, 81, 181, 0.1)',
+                              color: 'primary.main',
+                              fontWeight: 500,
+                            }} 
+                          />
+                        ))}
+                        {contact.tags.length > 3 && (
+                          <Chip 
+                            label={`+${contact.tags.length - 3}`} 
+                            size="small" 
+                            sx={{ 
+                              background: 'rgba(63, 81, 181, 0.05)',
+                              color: 'primary.main',
+                            }} 
+                          />
+                        )}
+                      </Box>
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
