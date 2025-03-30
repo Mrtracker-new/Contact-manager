@@ -30,22 +30,62 @@ input, textarea, select {
 }
 
 /* Add page transitions */
-.page-enter {
+/* Enhanced animations and transitions */
+.page-transition-enter {
   opacity: 0;
   transform: translateY(20px);
 }
 
-.page-enter-active {
+.page-transition-enter-active {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 300ms, transform 300ms;
 }
 
-.page-exit {
+.page-transition-exit {
   opacity: 1;
 }
 
-.page-exit-active {
+.page-transition-exit-active {
   opacity: 0;
   transition: opacity 300ms;
+}
+
+/* Card hover animations */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 30px rgba(0,0,0,0.15);
+}
+
+/* Button animations */
+.button-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.button-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(86, 103, 255, 0.2);
+}
+
+/* Form field focus animations */
+.input-focus {
+  transition: box-shadow 0.2s ease;
+}
+
+.input-focus:focus {
+  box-shadow: 0 0 0 2px rgba(86, 103, 255, 0.2);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Global transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }

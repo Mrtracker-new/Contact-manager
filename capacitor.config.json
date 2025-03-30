@@ -11,5 +11,13 @@
   "server": {
     "androidScheme": "https",
     "allowNavigation": ["*"]
+  },
+  "android": {
+    "webContentsDebuggingEnabled": true,
+    "allowMixedContent": true,
+    "captureInput": true,
+    "initialFocus": true,
+    "useLegacyBridge": false,
+    "javaScriptHeapSize": 512
   }
 }

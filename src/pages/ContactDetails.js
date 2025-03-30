@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Share } from '@capacitor/share';
 import { Toast } from '@capacitor/toast';
+import { Capacitor } from '@capacitor/core';
+import { createVCardFile, createVCardFileForSharing } from '../utils/vCardFormatter';
+import { generateQRCode } from '../utils/contactImportExport';
 import { 
   Container, Typography, Box, Paper, Avatar, IconButton, Dialog,
   DialogContent, DialogTitle, Snackbar, Alert, CircularProgress,
-  Button, List, ListItem, ListItemIcon, ListItemText, Grid, Card,
-  CardContent, Divider, Chip
+  Button, List, ListItem, ListItemIcon, ListItemText, Divider
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -21,64 +23,15 @@ import {
   TextSnippet as TextSnippetIcon,
   Close as CloseIcon,
   Visibility as VisibilityIcon,
-  FileDownload as FileDownloadIcon
+  FileDownload as FileDownloadIcon,
+  InsertDriveFile as InsertDriveFileIcon,
+  WhatsApp as WhatsAppIcon,
+  QrCode as QrCodeIcon
 } from '@mui/icons-material';
 import { ContactsContext } from '../App';
 import { getContactById, deleteContact, updateContact } from '../utils/contactsStorage';
-import { createSafeObjectURL, revokeSafeObjectURL, base64ToBlob } from '../utils/documentHandler';
+import { createSafeObjectURL, revokeSafeObjectURL, base64ToBlob, dataURItoBlob } from '../utils/documentHandler';
 
-// Add this function before the component
-function dataURItoBlob(dataURI) {
-  console.log('Converting data URI to blob');
-  try {
-    if (!dataURI) return null;
-    if (typeof dataURI !== 'string') return null;
-    if (dataURI.startsWith('blob:')) return null;
-    
-    if (dataURI.startsWith('data:')) {
-      const parts = dataURI.split(',');
-      if (parts.length < 2) return null;
-      
-      const mimeMatch = parts[0].match(/:(.*?);/);
-      if (!mimeMatch) return null;
-      
-      const mimeString = mimeMatch[1];
-      const base64 = parts[1];
-      
-      try {
-        const byteString = atob(base64);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: mimeString });
-      } catch (e) {
-        console.error('Error decoding base64:', e);
-        return null;
-      }
-    }
-    
-    try {
-      const byteString = atob(dataURI);
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      return new Blob([ab], { type: 'application/octet-stream' });
-    } catch (e) {
-      console.error('Error decoding plain base64:', e);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error converting data URI to Blob:', error);
-    return null;
-  }
-}
-
-// Utility function for formatting file size
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -87,9 +40,50 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+const DocumentListItem = ({ 
+  doc, 
+  onView, 
+  onShare, 
+  onDownload, 
+  onDelete 
+}) => (
+  <ListItem
+    secondaryAction={
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <IconButton onClick={onView} size="small">
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+        <IconButton onClick={onShare} size="small">
+          <ShareIcon fontSize="small" />
+        </IconButton>
+        <IconButton onClick={onDownload} size="small">
+          <FileDownloadIcon fontSize="small" />
+        </IconButton>
+        <IconButton onClick={onDelete} size="small" color="error">
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    }
+    sx={{ 
+      transition: 'background-color 0.2s', 
+      '&:hover': { bgcolor: 'action.hover' },
+      py: 1.5
+    }}
+  >
+    <ListItemIcon sx={{ minWidth: 40 }}>
+      {doc.file?.type?.startsWith('image/') ? <ImageIcon color="primary" /> :
+       doc.file?.type === 'application/pdf' ? <PictureAsPdfIcon color="primary" /> :
+       <InsertDriveFileIcon color="primary" />}
+    </ListItemIcon>
+    <ListItemText
+      primary={doc.name || 'Unnamed Document'}
+      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+      secondary={doc.file ? formatFileSize(doc.file.size) : 'Size unavailable'}
+    />
+  </ListItem>
+);
+
 const ContactDetails = () => {
-  console.log('ContactDetails component rendering');
-  
   const [contact, setContact] = useState(null);
   const [previewDoc, setPreviewDoc] = useState(null);
   const { id } = useParams();
@@ -98,171 +92,129 @@ const ContactDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const [snackbar, setSnackbar] = useState({ 
+    open: false, 
+    message: '', 
+    severity: 'info' 
+  });
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareOptions, setShareOptions] = useState([]);
+  const [qrCodeDialogOpen, setQrCodeDialogOpen] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState(null);
 
   const handleShowMessage = useCallback((message, severity = 'info') => {
     setSnackbar({ open: true, message, severity });
   }, []);
-    
+
   const handleCloseSnackbar = useCallback(() => {
     setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
-  useEffect(() => {
-    const loadContact = async () => {
-      try {
-        const loadedContact = await getContactById(id);
-        if (!loadedContact) {
-          navigate('/', { replace: true });
-          return;
-        }
-  
-        console.log('Raw loaded contact:', loadedContact);
-        
-        // Improve document normalization
-        const normalizedContact = {
-          ...loadedContact,
-          documents: (loadedContact.documents || [])
-            .filter(Boolean)
-            .map(doc => {
-              try {
-                // Create a proper document object
-                const normalizedDoc = {
-                  ...doc,
-                  id: doc.id || Date.now().toString(),
-                  name: doc.name || 'Unnamed Document',
-                  file: doc.file instanceof Blob ? 
-                    doc.file : 
-                    (doc.fileData ? dataURItoBlob(doc.fileData) : null)
-                };
-                
-                // Log each document for debugging
-                console.log('Normalized document:', {
-                  id: normalizedDoc.id,
-                  name: normalizedDoc.name,
-                  fileType: normalizedDoc.file ? normalizedDoc.file.type : 'unknown',
-                  fileSize: normalizedDoc.file ? normalizedDoc.file.size : 0
-                });
-                
-                return normalizedDoc;
-              } catch (error) {
-                console.error('Error processing document:', error);
-                return null;
-              }
-            })
-            .filter(doc => doc && doc.file instanceof Blob)
-        };
-  
-        console.log('Normalized contact documents:', normalizedContact.documents?.length || 0);
-        setContact(normalizedContact);
-      } catch (err) {
-        setError('Failed to load contact details');
-        handleShowMessage('Failed to load contact', 'error');
-        console.error('Contact load error:', err);
-      } finally {
-        setLoading(false);
+  const loadContact = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const loadedContact = await getContactById(id);
+      if (!loadedContact) {
+        handleShowMessage('Contact not found', 'error');
+        navigate('/', { replace: true });
+        return;
       }
-    };
-  
-    loadContact();
+
+      // Process documents
+      const processedContact = {
+        ...loadedContact,
+        documents: (loadedContact.documents || []).map(doc => {
+          try {
+            if (!doc || !doc.data) return null;
+
+            return {
+              ...doc,
+              id: doc.id || `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: doc.name || 'Unnamed Document',
+              file: doc.data.startsWith('data:') ? dataURItoBlob(doc.data) : base64ToBlob(doc.data),
+              type: doc.type || 'application/octet-stream'
+            };
+          } catch (error) {
+            console.error('Error processing document:', error);
+            return null;
+          }
+        }).filter(Boolean)
+      };
+
+      setContact(processedContact);
+    } catch (err) {
+      console.error('Contact load error:', err);
+      setError('Failed to load contact details');
+      handleShowMessage('Failed to load contact', 'error');
+    } finally {
+      setLoading(false);
+    }
   }, [id, navigate, handleShowMessage]);
 
   useEffect(() => {
-    return () => {
-      if (previewDoc) {
-        const objectUrl = previewDoc.file instanceof Blob ? 
-          URL.createObjectURL(previewDoc.file) : null;
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [previewDoc]);
-
-  useEffect(() => {
-    if (!previewOpen && previewDoc) setPreviewDoc(null);
-  }, [previewOpen, previewDoc]);
+    loadContact();
+  }, [loadContact]);
 
   const handleDocumentAction = async (doc, action) => {
     try {
       if (!doc.file || !(doc.file instanceof Blob)) {
         throw new Error('Invalid file data');
       }
-  
-      // Android-specific file handling
-      if (window.Capacitor) {
-        const { Filesystem, Share } = window.Capacitor.Plugins;
+
+      if (Capacitor.isNativePlatform()) {
+        const { Filesystem } = Capacitor.Plugins;
         const fileName = `${doc.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`;
-        const path = `documents/${fileName}`;
+        const path = `contacts_documents/${fileName}`;
         
-        // Convert Blob to base64
-        const base64Data = await blobToBase64(doc.file);
-        
-        // Write file to filesystem
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(doc.file);
+        });
+
         await Filesystem.writeFile({
           path,
           data: base64Data,
           directory: 'DOCUMENTS',
           recursive: true
         });
-  
-        // Get URI for sharing
-        const uri = await Filesystem.getUri({
-          directory: 'DOCUMENTS',
-          path
-        });
-  
-        switch(action) {
-          case 'share':
-            await Share.share({
-              title: doc.name,
-              url: uri.uri
-            });
-            break;
-            
-          case 'download':
-            // On Android, files are already saved - just show toast
-            await Toast.show({
-              text: `File saved to Documents/${path}`,
-              duration: 'long'
-            });
-            break;
+
+        const uri = await Filesystem.getUri({ directory: 'DOCUMENTS', path });
+
+        if (action === 'share') {
+          await Share.share({ title: doc.name, url: uri.uri });
+        } else {
+          await Toast.show({ 
+            text: `File saved to Documents/${path}`,
+            duration: 'long'
+          });
         }
-        
       } else {
-        // Web handling remains the same
         const url = URL.createObjectURL(doc.file);
+        const link = document.createElement('a');
+        link.href = url;
         
-        switch(action) {
-          case 'share':
-            if (window.navigator.share) {
-              await window.navigator.share({
-                title: doc.name,
-                text: `Sharing ${doc.name}`,
-              });
-            } else {
-              await Share.share({
-                title: doc.name,
-                text: `Sharing ${doc.name} (${doc.file.type})`,
-                dialogTitle: 'Share Document'
-              });
-            }
-            break;
-          
-          case 'download':
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = doc.name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            handleShowMessage(`${doc.name} downloaded successfully`, 'success');
-            break;
+        if (action === 'download') {
+          link.download = doc.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          handleShowMessage(`${doc.name} downloaded successfully`, 'success');
+        } else if (action === 'share' && navigator.share) {
+          await navigator.share({
+            title: doc.name,
+            files: [new File([doc.file], doc.name, { type: doc.file.type })]
+          });
         }
-        
-        URL.revokeObjectURL(url);
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch (error) {
-      console.error('Document action error:', error);
       handleShowMessage(error.message || 'Document operation failed', 'error');
+      console.error('Document action error:', error);
     }
   };
 
@@ -274,167 +226,38 @@ const ContactDetails = () => {
     }
   };
 
-  const handleEdit = () => {
-    const cleanContact = {
-      ...contact,
-      documents: contact.documents.map(doc => ({
-        id: doc.id,
-        name: doc.name,
-        file: doc.file,
-        fileData: undefined
-      }))
-    };
-    
-    navigate('/add-contact', { 
-      state: { 
-        isEditing: true,
-        contactId: id,
-        contact: cleanContact
-      } 
-    });
-  };
-
-  const handleShare = async () => {
+  const handleDeleteDocument = async (docId) => {
     try {
-      const contactInfo = [
-        `Name: ${contact.name}`,
-        contact.phone ? `Phone: ${contact.phone}` : '',
-        contact.email ? `Email: ${contact.email}` : '',
-        contact.address ? `Address: ${contact.address}` : '',
-      ].filter(Boolean).join('\n');
+      const updatedDocuments = contact.documents.filter(doc => doc.id !== docId);
+      const storageDocuments = await Promise.all(updatedDocuments.map(async doc => ({
+        ...doc,
+        fileData: await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(doc.file);
+        })
+      })));
 
-      await Share.share({
-        title: `Contact: ${contact.name}`,
-        text: contactInfo,
-        dialogTitle: 'Share Contact Information'
-      });
-    } catch (error) {
-      console.error('Error sharing contact:', error);
-      handleShowMessage('Failed to share contact', 'error');
-    }
-  };
-
-  // Add the handleViewDocument and handleDeleteDocument functions
-  const handleViewDocument = (doc) => {
-    if (!doc || !doc.file) {
-      handleShowMessage('Cannot view document: No data available', 'error');
-      return;
-    }
-    
-    try {
-      setPreviewDoc(doc);
-      setPreviewOpen(true);
-    } catch (error) {
-      console.error('Error viewing document:', error);
-      handleShowMessage('Failed to open document preview', 'error');
-    }
-  };
-
-  const refreshContactData = async () => {
-    const updatedContact = await getContactById(id);
-    setContact(updatedContact);
-  };
-
-  const handleDeleteDocument = async (index) => {
-    try {
-      if (!contact || !contact.id) return;
-      
-      console.log(`Deleting document at index ${index}`);
-      
-      // Create a copy of the contact with the document removed
-      const updatedDocuments = [...contact.documents];
-      const removedDoc = updatedDocuments.splice(index, 1)[0];
-      console.log('Removed document:', removedDoc?.name);
-      
-      // Prepare documents for storage - convert Blobs to base64 strings
-      const storageDocuments = await Promise.all(updatedDocuments.map(async (doc) => {
-        if (doc.file instanceof Blob) {
-          // Convert Blob to base64 for storage
-          return {
-            id: doc.id,
-            name: doc.name,
-            type: doc.file.type,
-            fileData: await blobToBase64(doc.file)
-          };
-        }
-        return doc;
-      }));
-      
-      const updatedContact = {
-        ...contact,
-        documents: storageDocuments
-      };
-      
-      console.log('Updating contact with documents:', updatedContact.documents?.length || 0);
-      
-      // Update the contact
+      const updatedContact = { ...contact, documents: storageDocuments };
       await updateContact(updatedContact);
-      
-      // Refresh the contact data with the normalized documents
-      setContact({
-        ...updatedContact,
-        documents: updatedDocuments // Keep the Blob versions in the UI
-      });
-      
+      setContact({ ...updatedContact, documents: updatedDocuments });
       handleShowMessage('Document deleted successfully', 'success');
-      refreshContacts();
-      await refreshContactData();
-      
     } catch (error) {
-      console.error('Error deleting document:', error);
       handleShowMessage('Failed to delete document', 'error');
+      console.error('Document deletion error:', error);
     }
   };
 
-  // Helper function to convert Blob to base64
-  const blobToBase64 = (blob) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  };
+  const renderDocumentPreview = () => {
+    if (!previewDoc?.file) return null;
+    const objectUrl = createSafeObjectURL(previewDoc.file);
 
-  const renderDocumentPreview = (doc) => {
-    if (!doc?.file) {
-      return (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            Preview not available
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Invalid file data
-          </Typography>
-        </Box>
-      );
-    }
-  
-    const fileBlob = doc.file instanceof Blob ? 
-      doc.file : 
-      (doc.fileData ? base64ToBlob(doc.fileData, doc.type) : null);
-      
-    if (!fileBlob) {
-      return (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>
-            Preview not available
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Could not process file data
-          </Typography>
-        </Box>
-      );
-    }
-    
-    const objectUrl = createSafeObjectURL(fileBlob);
-    
     return (
       <Box sx={{ position: 'relative', height: '80vh' }}>
-        {fileBlob.type.startsWith('image/') ? (
+        {previewDoc.file.type.startsWith('image/') ? (
           <img
             src={objectUrl}
-            alt={doc.name}
+            alt={previewDoc.name}
             style={{ 
               width: '100%', 
               height: '100%', 
@@ -442,11 +265,10 @@ const ContactDetails = () => {
               backgroundColor: '#f0f0f0'
             }}
             onLoad={() => revokeSafeObjectURL(objectUrl)}
-            onError={() => revokeSafeObjectURL(objectUrl)}
           />
-        ) : fileBlob.type === 'application/pdf' ? (
+        ) : previewDoc.file.type === 'application/pdf' ? (
           <iframe
-            title={doc.name}
+            title={previewDoc.name}
             src={objectUrl}
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
@@ -460,33 +282,130 @@ const ContactDetails = () => {
             </Typography>
           </Box>
         )}
-        
-        <Box sx={{ 
-          position: 'absolute', 
-          bottom: 16, 
-          right: 16, 
-          display: 'flex', 
-          gap: 1 
-        }}>
-          <Button
-            variant="contained"
-            startIcon={<ShareIcon />}
-            onClick={() => handleDocumentAction(doc, 'share')}
-            size="small"
-          >
-            Share
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<FileDownloadIcon />}
-            onClick={() => handleDocumentAction(doc, 'download')}
-            size="small"
-          >
-            Download
-          </Button>
-        </Box>
       </Box>
     );
+  };
+
+  const handleShareContact = async () => {
+    try {
+      setShareDialogOpen(true);
+      const options = [
+        { label: 'Share vCard', icon: <ShareIcon />, action: 'vcard' },
+        { label: 'Share QR Code', icon: <QrCodeIcon />, action: 'qrcode' }
+      ];
+      setShareOptions(options);
+    } catch (error) {
+      handleShowMessage('Failed to share contact', 'error');
+      console.error('Share error:', error);
+    }
+  };
+
+  const handleShareOptionSelect = async (option) => {
+    try {
+      setShareDialogOpen(false);
+      
+      if (option.action === 'vcard') {
+        const vCardFile = createVCardFileForSharing(contact);
+        
+        if (Capacitor.isNativePlatform()) {
+          // For native platforms (Android/iOS), use Capacitor Share
+          const { Filesystem } = Capacitor.Plugins;
+          const fileName = `${contact.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.vcf`;
+          const path = `contacts/${fileName}`;
+          
+          // Convert the vCard file to base64
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(vCardFile);
+          });
+
+          // Save the file temporarily
+          await Filesystem.writeFile({
+            path,
+            data: base64Data,
+            directory: 'DOCUMENTS',
+            recursive: true
+          });
+
+          // Get the file URI
+          const { uri } = await Filesystem.getUri({ 
+            directory: 'DOCUMENTS', 
+            path 
+          });
+
+          // Share the file
+          await Share.share({
+            title: `${contact.name}'s Contact`,
+            text: `Share ${contact.name}'s contact information`,
+            url: uri.uri,
+            dialogTitle: 'Share Contact Via'
+          });
+
+          // Clean up the temporary file
+          try {
+            await Filesystem.deleteFile({
+              path,
+              directory: 'DOCUMENTS'
+            });
+          } catch (cleanupError) {
+            console.warn('Failed to clean up temporary file:', cleanupError);
+          }
+        } else {
+          // For web platforms, try Web Share API first
+          if (navigator.share) {
+            try {
+              await navigator.share({
+                title: `${contact.name}'s Contact`,
+                text: `Share ${contact.name}'s contact information`,
+                files: [vCardFile]
+              });
+            } catch (shareError) {
+              // If Web Share API fails, fall back to download
+              const vCardUrl = URL.createObjectURL(vCardFile);
+              const link = document.createElement('a');
+              link.href = vCardUrl;
+              link.download = `${contact.name.replace(/\s+/g, '_')}.vcf`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              setTimeout(() => URL.revokeObjectURL(vCardUrl), 1000);
+              handleShowMessage('Contact saved as vCard file', 'success');
+            }
+          } else {
+            // If Web Share API is not available, use download
+            const vCardUrl = URL.createObjectURL(vCardFile);
+            const link = document.createElement('a');
+            link.href = vCardUrl;
+            link.download = `${contact.name.replace(/\s+/g, '_')}.vcf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(vCardUrl), 1000);
+            handleShowMessage('Contact saved as vCard file', 'success');
+          }
+        }
+      } else if (option.action === 'qrcode') {
+        const qrCode = await generateQRCode(contact);
+        setQrCodeUrl(qrCode);
+        setQrCodeDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Share option error:', error);
+      handleShowMessage('Failed to share contact. The contact will be downloaded instead.', 'warning');
+      
+      // Fallback to download if sharing fails
+      const vCardFile = createVCardFileForSharing(contact);
+      const vCardUrl = URL.createObjectURL(vCardFile);
+      const link = document.createElement('a');
+      link.href = vCardUrl;
+      link.download = `${contact.name.replace(/\s+/g, '_')}.vcf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(vCardUrl), 1000);
+    }
   };
 
   if (loading) {
@@ -511,172 +430,367 @@ const ContactDetails = () => {
   return (
     <>
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Box sx={{ position: 'relative', mb: 8 }}>
-          <IconButton
-            component={Link}
-            to="/"
-            sx={{ position: 'absolute', left: 0, top: -16 }}
-          >
-            <ArrowBackIcon fontSize="large" />
-          </IconButton>
-          
+        <Box sx={{ mb: 4 }}>
           <Box sx={{ 
-            bgcolor: 'primary.main', 
-            height: 160, 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 3,
+            gap: 2
+          }}>
+            <IconButton 
+              component={Link} 
+              to="/" 
+              sx={{ 
+                bgcolor: 'background.paper',
+                boxShadow: 1,
+                '&:hover': {
+                  bgcolor: 'action.hover'
+                }
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Contact Details
+            </Typography>
+          </Box>
+
+          <Box sx={{ 
+            bgcolor: 'background.paper', 
+            p: 4,
             borderRadius: 3,
-            position: 'relative'
+            boxShadow: 2,
+            position: 'relative',
+            textAlign: 'center',
+            transition: 'transform 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)'
+            }
           }}>
             <Avatar
               src={contact.photo instanceof Blob ? URL.createObjectURL(contact.photo) : undefined}
-              onLoad={(e) => {
-                if (e.target.src.startsWith('blob:')) {
-                  URL.revokeObjectURL(e.target.src);
-                }
-              }}
               sx={{
                 width: 120,
                 height: 120,
-                border: '4px solid white',
-                position: 'absolute',
-                bottom: -60,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                bgcolor: 'primary.dark',
-                fontSize: '3rem'
+                mb: 3,
+                mx: 'auto',
+                border: '4px solid',
+                borderColor: 'primary.main',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                transition: 'transform 0.2s',
+                '&:hover': {
+                  transform: 'scale(1.05)'
+                }
               }}
             >
               {contact.name.charAt(0)}
             </Avatar>
+
+            <Typography variant="h3" gutterBottom sx={{ 
+              fontWeight: 600,
+              background: 'linear-gradient(45deg, #5667ff 30%, #8b94ff 90%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              mb: 2
+            }}>
+              {contact.name}
+            </Typography>
+
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: 2, 
+              mb: 3,
+              flexWrap: 'wrap'
+            }}>
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={() => navigate(`/edit-contact/${id}`)}
+                sx={{
+                  bgcolor: 'primary.main',
+                  '&:hover': {
+                    bgcolor: 'primary.dark'
+                  }
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleDelete}
+                sx={{
+                  '&:hover': {
+                    bgcolor: 'error.dark'
+                  }
+                }}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ShareIcon />}
+                onClick={handleShareContact}
+                sx={{
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': {
+                    borderColor: 'primary.dark',
+                    bgcolor: 'primary.light',
+                    color: 'primary.dark'
+                  }
+                }}
+              >
+                Share
+              </Button>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+              gap: 3,
+              textAlign: 'left'
+            }}>
+              {[
+                { icon: <CallIcon />, value: contact.phone, type: 'phone' },
+                { icon: <EmailIcon />, value: contact.email, type: 'email' },
+                { icon: <LocationIcon />, value: contact.address, type: 'address' }
+              ].map((item, index) => item.value && (
+                <Box 
+                  key={index} 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 2,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: 'background.default',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'translateX(4px)'
+                    }
+                  }}
+                >
+                  <Box sx={{ 
+                    color: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    bgcolor: 'primary.light',
+                    opacity: 0.9
+                  }}>
+                    {item.icon}
+                  </Box>
+                  <Box>
+                    <Typography variant="body1" fontWeight={500}>
+                      {item.value}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.type.toUpperCase()}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
           </Box>
         </Box>
 
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h3" gutterBottom>
-            {contact.name}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-            <IconButton onClick={handleEdit} color="primary" size="large">
-              <EditIcon fontSize="large" />
-            </IconButton>
-            <IconButton onClick={handleDelete} color="error" size="large">
-              <DeleteIcon fontSize="large" />
-            </IconButton>
-            <IconButton onClick={handleShare} color="primary" size="large">
-              <ShareIcon fontSize="large" />
-            </IconButton>
-          </Box>
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          {[
-            { icon: <CallIcon />, value: contact.phone, type: 'phone' },
-            { icon: <EmailIcon />, value: contact.email, type: 'email' },
-            { icon: <LocationIcon />, value: contact.address, type: 'address' }
-          ].map((item, index) => (
-            item.value && (
-              <Paper key={index} sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center' }}>
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                <ListItemText
-                  primary={item.value}
-                  secondary={item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-                />
-                {item.type === 'phone' && (
-                  <IconButton href={`tel:${item.value}`}>
-                    <CallIcon />
-                  </IconButton>
-                )}
-                {item.type === 'email' && (
-                  <IconButton href={`mailto:${item.value}`}>
-                    <EmailIcon />
-                  </IconButton>
-                )}
-              </Paper>
-            )
-          ))}
-        </Box>
-
-        {contact.documents?.length > 0 ? (
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
+        {contact.documents?.length > 0 && (
+          <Paper 
+            sx={{ 
+              p: 3, 
+              borderRadius: 3, 
+              boxShadow: 2,
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)'
+              }
+            }}
+          >
+            <Typography variant="h5" gutterBottom sx={{ 
+              fontWeight: 600, 
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              <InsertDriveFileIcon color="primary" />
               Attachments ({contact.documents.length})
             </Typography>
             <List>
-              {contact.documents.map((doc, index) => {
-                console.log(`Rendering document ${index}:`, {
-                  name: doc.name,
-                  type: doc.file?.type,
-                  size: doc.file?.size
-                });
-                
-                if (!doc || !doc.file) {
-                  console.error('Invalid document at index', index);
-                  return null;
-                }
-                
-                return (
-                  <ListItem
-                    key={index}
-                    secondaryAction={
-                      <Box sx={{ display: 'flex' }}>
-                        <IconButton onClick={() => {
-                          console.log('Opening preview for document:', doc.name);
-                          setPreviewDoc(doc);
-                          setPreviewOpen(true);
-                        }}>
-                          <VisibilityIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDocumentAction(doc, 'share')}>
-                          <ShareIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDocumentAction(doc, 'download')}>
-                          <FileDownloadIcon />
-                        </IconButton>
-                        <IconButton onClick={() => handleDeleteDocument(index)} color="error">
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    }
-                    sx={{ transition: 'background-color 0.2s', '&:hover': { bgcolor: 'action.hover' } }}
-                  >
-                    <ListItemIcon>
-                      {doc.file?.type?.startsWith('image/') ? <ImageIcon /> :
-                       doc.file?.type === 'application/pdf' ? <PictureAsPdfIcon /> :
-                       <TextSnippetIcon />}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={doc.name || 'Unnamed Document'}
-                      secondary={doc.file ? `${formatFileSize(doc.file.size)}` : 'Unknown size'}
-                    />
-                  </ListItem>
-                );
-              })}
+              {contact.documents.map((doc) => (
+                <DocumentListItem
+                  key={doc.id}
+                  doc={doc}
+                  onView={() => {
+                    setPreviewDoc(doc);
+                    setPreviewOpen(true);
+                  }}
+                  onShare={() => handleDocumentAction(doc, 'share')}
+                  onDownload={() => handleDocumentAction(doc, 'download')}
+                  onDelete={() => handleDeleteDocument(doc.id)}
+                />
+              ))}
             </List>
-          </Paper>
-        ) : (
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              No attachments found for this contact
-            </Typography>
           </Paper>
         )}
       </Container>
+
+      <Dialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          pb: 2
+        }}>
+          Share Contact
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <List>
+            {shareOptions.map((option) => (
+              <ListItem
+                component="div"
+                key={option.action}
+                onClick={() => handleShareOptionSelect(option)}
+                sx={{
+                  borderRadius: 2,
+                  mb: 1,
+                  cursor: 'pointer',
+                  '&:hover': { 
+                    bgcolor: 'action.hover',
+                    transform: 'translateX(4px)',
+                    transition: 'all 0.2s'
+                  }
+                }}
+              >
+                <ListItemIcon sx={{ 
+                  color: 'primary.main',
+                  minWidth: 40
+                }}>
+                  {option.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={option.label}
+                  primaryTypographyProps={{
+                    fontWeight: 500
+                  }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={qrCodeDialogOpen}
+        onClose={() => setQrCodeDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          pb: 2
+        }}>
+          Scan QR Code
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            p: 3,
+            bgcolor: 'background.default',
+            borderRadius: 2,
+            mb: 2
+          }}>
+            {qrCodeUrl && (
+              <img
+                src={qrCodeUrl}
+                alt="Contact QR Code"
+                style={{
+                  maxWidth: '100%',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              />
+            )}
+          </Box>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              textAlign: 'center',
+              color: 'text.secondary',
+              bgcolor: 'background.default',
+              p: 2,
+              borderRadius: 2
+            }}
+          >
+            Scan this QR code with your device's camera to import the contact
+          </Typography>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         maxWidth="lg"
         fullWidth
-        PaperProps={{ sx: { height: '90vh' } }}
+        PaperProps={{ 
+          sx: { 
+            height: '90vh',
+            borderRadius: 2,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          } 
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          {previewDoc?.name}
-          <IconButton onClick={() => setPreviewOpen(false)}>
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          pb: 2
+        }}>
+          <Typography variant="h6" component="div">
+            {previewDoc?.name}
+          </Typography>
+          <IconButton 
+            onClick={() => setPreviewOpen(false)}
+            sx={{
+              '&:hover': {
+                bgcolor: 'action.hover'
+              }
+            }}
+          >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          {previewDoc && renderDocumentPreview(previewDoc)}
+        <DialogContent dividers sx={{ bgcolor: 'background.default' }}>
+          {previewDoc && renderDocumentPreview()}
         </DialogContent>
       </Dialog>
 
@@ -690,7 +804,11 @@ const ContactDetails = () => {
           severity={snackbar.severity}
           variant="filled"
           onClose={handleCloseSnackbar}
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            borderRadius: 2,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}
         >
           {snackbar.message}
         </Alert>

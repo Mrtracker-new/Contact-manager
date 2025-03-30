@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useCallback } from 'react';
+import React, { useState, useEffect, createContext, useCallback, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -16,20 +16,29 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(0);
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Function to refresh contacts - memoized to prevent unnecessary re-renders
-  const refreshContacts = useCallback(async () => {
+  const refreshContacts = useCallback(async (force = false) => {
     try {
-      // Prevent multiple refreshes within 500ms
+      // Prevent multiple refreshes within 500ms unless forced
       const now = Date.now();
-      if (now - lastRefresh < 500) {
+      if (!force && now - lastRefresh < 500) {
         console.log('Skipping refresh - too soon since last refresh');
         return false;
       }
       
+      // Prevent concurrent refreshes
+      if (isRefreshing) {
+        console.log('Skipping refresh - already refreshing');
+        return false;
+      }
+
+      setIsRefreshing(true);
       setLastRefresh(now);
       setLoading(true);
       console.log('Refreshing contacts...');
+      
       const loadedContacts = await getContacts();
       console.log('Loaded contacts:', loadedContacts?.length || 0);
       
@@ -40,30 +49,48 @@ function App() {
       return false;
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [lastRefresh]); // Remove contacts from dependencies
+  }, [lastRefresh, isRefreshing]);
 
   // Initialize storage and load contacts on app start
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
       try {
         await initializeStorage();
-        await refreshContacts();
+        if (mounted) {
+          await refreshContacts(true); // Force initial refresh
+        }
       } catch (error) {
         console.error('Error initializing app:', error);
       }
     };
     
     init();
-    // Only run this effect once on mount
-  }, []); // Remove refreshContacts from dependencies
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Only run on mount
 
   // Create a separate effect for refreshing contacts when refreshCounter changes
   useEffect(() => {
-    if (refreshCounter > 0) {
-      refreshContacts();
-    }
-  }, [refreshCounter, refreshContacts]);
+    let mounted = true;
+
+    const refresh = async () => {
+      if (refreshCounter > 0 && mounted) {
+        await refreshContacts(true); // Force refresh when counter changes
+      }
+    };
+
+    refresh();
+
+    return () => {
+      mounted = false;
+    };
+  }, [refreshCounter]); // Only depend on refreshCounter
 
   // Create a function to trigger refresh without causing infinite loops
   const triggerRefresh = useCallback(() => {
@@ -82,16 +109,27 @@ function App() {
     },
   });
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    contacts, 
+    loading, 
+    refreshContacts: triggerRefresh
+  }), [contacts, loading, triggerRefresh]);
+
+  // Memoize the theme to prevent unnecessary re-renders
+  const memoizedTheme = useMemo(() => theme, []); // Empty dependency array since theme is constant
+
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={memoizedTheme}>
       <CssBaseline />
       <SnackbarProvider maxSnack={3}>
-        <ContactsContext.Provider value={{ contacts, loading, refreshContacts: triggerRefresh }}>
+        <ContactsContext.Provider value={contextValue}>
           <Router>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/add-contact" element={<AddContact />} />
               <Route path="/contact/:id" element={<ContactDetails />} />
+              <Route path="/edit-contact/:id" element={<AddContact />} />
             </Routes>
           </Router>
         </ContactsContext.Provider>

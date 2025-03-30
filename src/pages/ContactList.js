@@ -1,7 +1,7 @@
-import React, { useContext, useState, useMemo, useEffect } from 'react';
+import React, { useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Container, Typography, Box, Grid, Paper, 
-  Avatar, IconButton, Button, TextField,
+  Avatar, Button, TextField,
   InputAdornment, CircularProgress
 } from '@mui/material';
 import { Link } from 'react-router-dom';
@@ -14,45 +14,62 @@ const ContactList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [avatarUrls, setAvatarUrls] = useState({});
 
-  // Create and cleanup avatar URLs
+  // Create and manage avatar URLs
   useEffect(() => {
-    const urls = {};
+    const newUrls = {};
+    
+    // Create URLs for contacts with photos
     contacts.forEach(contact => {
-      if (contact.photo && contact.photo instanceof Blob) {
+      if (contact.photo instanceof Blob) {
         try {
-          urls[contact.id] = URL.createObjectURL(contact.photo);
+          // Create new URL only if we don't have one for this contact
+          if (!avatarUrls[contact.id]) {
+            newUrls[contact.id] = URL.createObjectURL(contact.photo);
+          } else {
+            // Keep existing URL if we already have one
+            newUrls[contact.id] = avatarUrls[contact.id];
+          }
         } catch (error) {
-          console.error(`Failed to create URL for contact ${contact.id}:`, error);
+          console.error('Error creating avatar URL:', error);
         }
       }
     });
-    setAvatarUrls(urls);
 
+    // Cleanup unused URLs
+    Object.keys(avatarUrls).forEach(id => {
+      if (!contacts.some(c => c.id === id)) {
+        URL.revokeObjectURL(avatarUrls[id]);
+      }
+    });
+
+    setAvatarUrls(newUrls);
+
+    // Cleanup function
     return () => {
-      // Clean up URLs when component unmounts
-      Object.values(urls).forEach(url => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (error) {
-          console.error('Error revoking object URL:', error);
-        }
+      Object.values(newUrls).forEach(url => {
+        URL.revokeObjectURL(url);
       });
     };
   }, [contacts]);
 
+  // Optimized search filter
   const filteredContacts = useMemo(() => {
-    const query = searchQuery.toLowerCase();
+    if (!searchQuery) return contacts;
+    
+    const query = searchQuery.toLowerCase().trim();
     return contacts.filter(contact => {
-      const nameMatch = contact.name?.toLowerCase().includes(query);
-      const phoneMatch = contact.phone?.includes(query);
-      const emailMatch = contact.email?.toLowerCase().includes(query);
-      return nameMatch || phoneMatch || emailMatch;
+      return [
+        contact.name?.toLowerCase(),
+        contact.phone?.replace(/\D/g, ''),
+        contact.email?.toLowerCase()
+      ].some(field => field?.includes(query));
     });
   }, [contacts, searchQuery]);
 
-  const handleSearchChange = (e) => {
+  // Debounced search handler
+  const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -103,7 +120,11 @@ const ContactList = () => {
         }}
       />
 
-      {filteredContacts.length === 0 ? (
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : filteredContacts.length === 0 ? (
         <Box sx={{ 
           textAlign: 'center', 
           p: 4, 
@@ -112,7 +133,7 @@ const ContactList = () => {
           borderRadius: 2
         }}>
           <Typography variant="body1" color="text.secondary">
-            No contacts found{matchMedia && searchQuery && ` for "${searchQuery}"`}
+            {searchQuery ? `No results for "${searchQuery}"` : 'No contacts found'}
           </Typography>
         </Box>
       ) : (
@@ -139,7 +160,6 @@ const ContactList = () => {
                     transform: 'translateY(0)'
                   }
                 }}
-                aria-label={`View details for ${contact.name}`}
               >
                 <Avatar
                   src={avatarUrls[contact.id]}
@@ -148,13 +168,15 @@ const ContactList = () => {
                     height: 56, 
                     mr: 2,
                     bgcolor: 'primary.main',
-                    fontSize: '1.5rem'
+                    fontSize: '1.5rem',
+                    border: '2px solid',
+                    borderColor: 'background.paper',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
-                  alt={`${contact.name} avatar`}
                 >
-                  {contact.name.charAt(0)}
+                  {contact.name?.charAt(0).toUpperCase()}
                 </Avatar>
-                <Box sx={{ overflow: 'hidden' }}>
+                <Box>
                   <Typography 
                     variant="h6" 
                     component="h2"

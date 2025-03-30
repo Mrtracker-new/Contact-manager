@@ -1,36 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Container, Typography, Grid, Card, CardContent, 
   CardActions, Button, TextField, Box, Avatar, 
-  IconButton, Divider
+  IconButton, Divider, CircularProgress
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { getContacts, deleteContact } from '../utils/contactsStorage';
+import { dataURItoBlob, createSafeObjectURL, revokeSafeObjectURL } from '../utils/documentHandler';
+import ImportExport from '../components/ImportExport';
+import AddIcon from '@mui/icons-material/Add';
 
 const Dashboard = () => {
   const [contacts, setContacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [photoUrls, setPhotoUrls] = useState({});
+  
+  const loadContacts = async () => {
+    try {
+      setLoading(true);
+      const loadedContacts = await getContacts();
+      setContacts(loadedContacts);
+    } catch (error) {
+      console.error('Error loading contacts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    // Load contacts from storage
-    const loadContacts = async () => {
-      try {
-        setLoading(true);
-        const loadedContacts = await getContacts();
-        setContacts(loadedContacts);
-      } catch (error) {
-        console.error('Error loading contacts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadContacts();
   }, []);
+  
+  // Manage photo URLs lifecycle
+  useEffect(() => {
+    const newPhotoUrls = {};
+    
+    // Create URLs for photos that don't have one yet
+    contacts.forEach(contact => {
+      if (contact.photo && !photoUrls[contact.id]) {
+        newPhotoUrls[contact.id] = createSafeObjectURL(contact.photo);
+      } else if (contact.photo && photoUrls[contact.id]) {
+        // Keep existing URLs
+        newPhotoUrls[contact.id] = photoUrls[contact.id];
+      }
+    });
+    
+    // Revoke URLs for contacts that are no longer in the list
+    Object.keys(photoUrls).forEach(id => {
+      if (!contacts.some(contact => contact.id === id)) {
+        revokeSafeObjectURL(photoUrls[id]);
+      }
+    });
+    
+    setPhotoUrls(newPhotoUrls);
+    
+    // Cleanup function to revoke all URLs when component unmounts
+    return () => {
+      Object.values(newPhotoUrls).forEach(url => {
+        revokeSafeObjectURL(url);
+      });
+    };
+  }, [contacts, photoUrls]);
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this contact?')) {
@@ -45,20 +79,28 @@ const Dashboard = () => {
     contact.phone.includes(searchTerm)
   );
 
+  const refreshContacts = async () => {
+    await loadContacts();
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h4" component="h1">
           Contacts
         </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          component={Link} 
-          to="/add-contact"
-        >
-          Add New Contact
-        </Button>
+        <Box>
+          <ImportExport onImportComplete={refreshContacts} />
+          <Button
+            component={Link}
+            to="/add-contact"
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ ml: 2 }}
+          >
+            Add Contact
+          </Button>
+        </Box>
       </Box>
       
       <Box sx={{ mb: 3, display: 'flex' }}>
@@ -93,7 +135,7 @@ const Dashboard = () => {
                     mb: 2 
                   }}>
                     <Avatar 
-                      src={contact.photo ? URL.createObjectURL(contact.photo) : ''} 
+                      src={photoUrls[contact.id] || ''} 
                       sx={{ 
                         width: 80, 
                         height: 80, 
