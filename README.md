@@ -132,7 +132,6 @@ The user interface has been refined for better usability:
 
 - **Streamlined Navigation**: Improved menu structure for faster access to features
 - **Enhanced Mobile Experience**: Optimized layouts for various screen sizes
-- **Dark Mode Support**: Comfortable viewing in low-light environments
 - **Accessibility Enhancements**: Improved screen reader support and keyboard navigation
 
 ## 📱 Installation
