@@ -25,7 +25,7 @@ A modern, cross-platform contact management application built with React and Cap
 
 ### Web View
 <div align="center">
-  <img src="screenshots/home_web_view.png" alt="Web Home Screen" width="600"/>
+  <img src="screenshots/home_web_view_new.png" alt="Web Home Screen" width="600"/>
   <p><em>Home Dashboard - Organize and access all your contacts</em></p>
   
   <img src="screenshots/contact_webview.png" alt="Web Contact View" width="600"/>
