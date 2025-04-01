@@ -186,7 +186,7 @@ The application can be configured through the capacitor.config.json file to adju
 
 ## 👨‍💻 About the Developer
 
-I'm Roland Lobo, a developer focused on creating practical applications that solve real-world problems. This project combines my passion for React development and creating intuitive user experiences.
+I'm Rolan Lobo, a developer focused on creating practical applications that solve real-world problems. This project combines my passion for React development and creating intuitive user experiences.
 
 - **GitHub**: [Mrtracker-new](https://github.com/Mrtracker-new/)
 - **Email**: rolanlobo901@gmail.com
