@@ -1,0 +1,40 @@
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        def propertiesFile = new File(rootProject.projectDir, "local.properties")
+        if (propertiesFile.exists()) {
+            properties.load(new FileInputStream(propertiesFile))
+            return properties.getProperty('flutter.sdk')
+        }
+        return null
+    }()
+
+    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+include ':app'
+
+// Remove the following line that's causing the error:
+// apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
+
+// Instead, Flutter plugins will be loaded automatically by the Flutter Gradle plugin
+// which is already applied in your app/build.gradle file
+
+def flutterProjectRoot = rootProject.projectDir.parentFile
+def plugins = new Properties()
+def pluginsFile = new File(flutterProjectRoot, '.flutter-plugins')
+if (pluginsFile.exists()) {
+    pluginsFile.withReader('UTF-8') { reader -> plugins.load(reader) }
+}
+
+plugins.each { name, path ->
+    def pluginDirectory = flutterProjectRoot.toPath().resolve(path).toFile()
+    include ":$name"
+    project(":$name").projectDir = pluginDirectory
+}
