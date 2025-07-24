@@ -1,1 +1,0 @@
-# File management module for BAR application
