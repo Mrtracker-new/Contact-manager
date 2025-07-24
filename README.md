@@ -616,23 +616,18 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📈 Roadmap
 
-### Version 1.1 (Q2 2024)
+### Version 1.0 (Mar30)
 - [ ] Real-time sync across devices
 - [ ] Advanced contact grouping
 - [ ] Backup scheduling
 - [ ] Theme customization
-
-### Version 1.2 (Q3 2024)
-- [ ] Contact sharing
-- [ ] Team collaboration features
-- [ ] Advanced search filters
-- [ ] Contact templates
-
-### Version 2.0 (Q4 2024)
+      
+### Version 2.0 (July 25)
 - [ ] Calendar integration
 - [ ] Task management
 - [ ] Email integration
 - [ ] API for third-party integrations
+- [ ] Advanced search filters
 
 ---
 
@@ -654,7 +649,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- 📧 **Email**: [support@contact-manager.com](mailto:support@contact-manager.com)
+- 📧 **Email**: [rolanlobo901@gmail.com](mailto:rolanlobo901@gmail.com)
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Mrtracker-new/Contact-manager/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/Mrtracker-new/Contact-manager/discussions)
 - 📖 **Documentation**: [Wiki](https://github.com/Mrtracker-new/Contact-manager/wiki)
