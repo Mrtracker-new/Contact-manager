@@ -654,7 +654,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- 📧 **Email**: [support@contact-manager.com](mailto:support@contact-manager.com)
+- 📧 **Email**: [rolanlobo901@gmail.com](mailto:rolanlobo901@gmail.com)
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Mrtracker-new/Contact-manager/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/Mrtracker-new/Contact-manager/discussions)
 - 📖 **Documentation**: [Wiki](https://github.com/Mrtracker-new/Contact-manager/wiki)
