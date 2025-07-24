@@ -616,23 +616,18 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📈 Roadmap
 
-### Version 1.1 (Q2 2024)
+### Version 1.0 (Mar30)
 - [ ] Real-time sync across devices
 - [ ] Advanced contact grouping
 - [ ] Backup scheduling
 - [ ] Theme customization
-
-### Version 1.2 (Q3 2024)
-- [ ] Contact sharing
-- [ ] Team collaboration features
-- [ ] Advanced search filters
-- [ ] Contact templates
-
-### Version 2.0 (Q4 2024)
+      
+### Version 2.0 (July 25)
 - [ ] Calendar integration
 - [ ] Task management
 - [ ] Email integration
 - [ ] API for third-party integrations
+- [ ] Advanced search filters
 
 ---
 
