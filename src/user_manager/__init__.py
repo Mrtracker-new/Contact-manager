@@ -1,1 +1,0 @@
-# User management module for BAR application
