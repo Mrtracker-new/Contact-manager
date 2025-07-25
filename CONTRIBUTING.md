@@ -163,7 +163,7 @@ Brief description of the issue
 ## Environment
 - OS: [e.g., Windows 10, macOS Big Sur]
 - Browser: [e.g., Chrome 96, Safari 15]
-- App Version: [e.g., 1.0.0]
+- App Version: [e.g., 2.0.0]
 
 ## Steps to Reproduce
 1. Go to '...'
